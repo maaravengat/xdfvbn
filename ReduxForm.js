@@ -1,8 +1,13 @@
 import React, { useEffect, useState } from 'react'
-import { Field, getFormInitialValues, reduxForm } from 'redux-form'
+import { Field, reduxForm, formValueSelector, change, resetSection } from 'redux-form'
+import { reset } from 'redux-form'
 import { useMutation, gql, useQuery } from '@apollo/client'
 import { connect } from 'react-redux'
 import { initialize } from 'redux-form'
+// import { fs } from 'file-system'
+import FileSaver, { saveAs } from 'file-saver'
+import Dropzone from 'react-dropzone'
+
 const ADD_MUTATIONS = gql`
 mutation AddBook($firstname: String!,$lastname: String!,$dob:String!,$email: String!){
     addbook(firstname: $firstname, lastname:$lastname,dob:$dob,email:$email){
@@ -23,7 +28,11 @@ mutation DeleterUser($id: String!){
 const UPDATE_MUTATIONS = gql`
 mutation UpdateUser($id: String!,$firstname: String!,$lastname: String!,$dob:String!,$email: String!){
     updateuser( id:$id, firstname: $firstname, lastname:$lastname,dob:$dob,email:$email){
+     id
      firstname
+     lastname
+     dob
+     email
     }
 }`
 const FORM_DATA = gql`
@@ -111,18 +120,6 @@ const renderRadio = ({ input, label, meta: { touched, error } }) => (
     </div>
 
 );
-//   <button onClick={() => {
-//                                                     updateuser({
-//                                                         variables: {
-//                                                             id:data.id,
-//                                                             firstname: data.firstname,
-//                                                             lastname: data.lastname,
-//                                                             dob: data.dob,
-//                                                             email: data.email
-
-//                                                         }
-//                                                     })
-//                                                 }}>Update</button> 
 
 
 
@@ -139,9 +136,78 @@ const renderCheckbox = ({ input, label, meta: { touched, error } }) => (
         </label>
     </div>
 );
+//  const renderDrop = () => (
+    
+//     <Dropzone  onDrop={acceptedFiles => console.log(acceptedFiles,'photo upload')}>
+    
+//   {({getRootProps, getInputProps, acceptedFiles }) => (
+    
+//     <div  style={{
+//         alignItems:"center",
+//         width: '100px',
+//               height: '100px',
+//               borderWidth: '2px',
+//               borderColor: 'red',
+//               borderStyle: 'dashed',
+//               borderRadius: '5px',
+//               padding: '20px'
+//     }} {...getRootProps()}>
+        
+//       <input {...getInputProps()} />
+//       <p>Upload a File</p>
+//       <label>
+//         {acceptedFiles.map(file => (
+//     <li key={file.path}>
+//       {file.path} 
+//     </li>
+//   ))
+//   }
+//       </label>
+//     </div>
+//   )
+//   }
 
+// </Dropzone>
+//  )
 
-
+ const RenderUpload = ({input:{value, onChange}})=> {
+    
+     const [preview,setPreview]=useState(value)
+    const onDrop = (acceptedfiles)=> {
+        const selectedFile =acceptedfiles[0];
+        console.log(selectedFile,'gfdsasdfdsagfwqegygtrfw');
+        onChange(selectedFile)
+        const reader = new FileReader();
+        console.log(reader,'fdsdfdsa');
+        const directorypath= '/path/home/radicalstart/vetri/src/images'
+        reader.onload =() => {
+            const result =reader.result
+            setPreview(reader.result);
+            console.log(reader.result);
+        
+        // saveAs(new Blob([result],{type:selectedFile}),`${directorypath}/${selectedFile}`)
+        }
+        reader.readAsDataURL(selectedFile)
+    
+ }
+ return (
+    <Dropzone
+    onDrop={onDrop}
+    >
+        {({getRootProps, getInputProps}) => (
+    <div class="dropzone mt-4 border-dashed" style={{
+        
+    }}
+    {...getRootProps()}>
+      <input {...getInputProps()} />
+      {preview ? (<img src={preview} />
+      ):( <p>Upload a Photo here</p>)}
+     
+    </div>
+  )}
+    </Dropzone>
+ )
+}
 const renderField = ({
     input,
     label,
@@ -161,9 +227,11 @@ const renderField = ({
 )
 
 
-const SyncValidationForm = props => {
-    const { handleSubmit, reset, initialValues } = props
-    
+let SyncValidationForm = props => {
+    const { handleSubmit, reset, resetForm, initialValues, dispatch } = props
+
+
+
     // const { book } = useQuery(FORM_DATA)
     const [addbook] = useMutation(ADD_MUTATIONS, {
         refetchQueries: [
@@ -178,57 +246,86 @@ const SyncValidationForm = props => {
 
     })
 
-    const [updateuser] = useMutation(UPDATE_MUTATIONS)
-    
+    const [updateuser] = useMutation(UPDATE_MUTATIONS, {
+        refetchQueries: [
+            { query: FORM_DATA }
+        ],
+
+
+    })
+
     const { data } = useQuery(FORM_DATA)
-    
 
-    
-      const handleEdit = (id) => {
-        props.initialize({firstname:id.firstname ,lastname:id.lastname, dob:id.dob, email:id.email})
-      }
-    const submit = async values  => {
-       console.log(values,'fdsdfdsdf')
-    //     alert("Success Fully Updated")
 
-        //  const {firstname, lastname,dob, email} =initialValues;
-        //  const input ={firstname, lastname,dob, email}
-    
-        //   if (!initialValues) {
-        //       await updateuser({
-        //            variables: {
-        //           id: values.id,
-        //  firstname: values.firstname,
-        //                lastname: values.lastname,
-        //              dob: values.dob,
-        //                email: values.email
-        //           }
-        //        })
-        //     } else {
-         await addbook({
 
-             variables: {
-                 firstname: values.firstname,
-         lastname: values.lastname,
-                dob: values.dob,
-                email: values.email
+    const handleEdit = (id) => {
+        props.initialize(id)
+
+
+
+    }
+    const update = async values => {
+        await updateuser({
+            variables: {
+                id: props.id,
+                firstname: props.firstname,
+                lastname: props.lastname,
+                dob: props.dob,
+                email: props.email
+
             }
 
         })
-    //    }
+        reset('SyncValidationForm')
+    }
 
-        reset()
-   
+
+    const submit = async values => {
+
+        console.log(props.firstname, 'fdsdfds');
+
+        if (props.id) {
+            await updateuser({
+                variables: {
+                    id: props.id,
+                    firstname: props.firstname,
+                    lastname: props.lastname,
+                    dob: props.dob,
+                    email: props.email
+
+                }
+
+            })
+
+
+        }
+        else {
+            await addbook({
+
+                variables: {
+                    firstname: values.firstname,
+                    lastname: values.lastname,
+                    dob: values.dob,
+                    email: values.email
+                }
+
+            })
+        }
+        //  reset()
+        dispatch(reset('SyncValidationForm'))
     }
     useEffect(() => {
-        console.log( "userdata");
+        console.log("userdata");
     }, [])
     return (
         <div >
+
             <form onSubmit={handleSubmit(submit)} >
                 <h3 class='text-primary'>Redux Form</h3>
                 <br />
 
+                   
+                 
                 <Field
                     name="firstname"
                     type="text"
@@ -243,7 +340,16 @@ const SyncValidationForm = props => {
                 < br />
                 <Field name="email" type="email" component={renderField} label="Email" />
                 <br />
-                {/* <Field name="password" type="password" component={renderField} label="PassWord" /> */}
+        
+                <Field name="files" component={RenderUpload}/>
+                <br />
+                <br />
+                {/* 
+                <Field
+                  name="picture"
+                  component={renderDropzoneInput}
+              /> */}
+                {/* <Field name="password" type="password" component={renderField} label="PassWord" />  */}
                 <br />
                 <div>
                     {/* 
@@ -257,13 +363,7 @@ const SyncValidationForm = props => {
                     < br />
                 </div>
 
-                <div class="form-group row" >
-
-                    <label class="text-primary  col-sm-10">Gender:</label>
-                    <label class="col-sm-12">
-                        <Field name="gender" component={renderRadio} label="Male" value="option" />
-                    </label>
-                </div>
+               
             </div>
             < br />
 
@@ -285,21 +385,11 @@ const SyncValidationForm = props => {
                     <button type="submit" class="bg-success text-dark">
                         Submit
                     </button>
-                    <button type="button" class="bg-danger text-dark" onClick={reset}>
+                    {/* <button type="button" onClick={() => update()}>Update</button> */}
+                    <button type="button" class="bg-danger text-dark" onClick={() => dispatch(reset(SyncValidationForm))} >
                         Clear Values
                     </button>
-                    {/* <button onClick={() => {
-                                                    updateuser({
-                                                        variables: {
-                                                            id:data.id,
-                                                            firstname: data.firstname,
-                                                            lastname: data.lastname,
-                                                            dob: data.dob,
-                                                            email: data.email
 
-                                                        }
-                                                    })
-                                                }}>Update</button>  */}
                 </div>
                 <div>
 
@@ -329,18 +419,7 @@ const SyncValidationForm = props => {
                                         <td>{user.email}</td>
                                         <td>
                                             <button onClick={() => handleEdit(user)}>Edit</button>
-                                              {/* <button onClick={() => {
-                                                    updateuser({
-                                                        variables: {
-                                                            id: user.id,
-                                                            firstname: user.firstname,
-                                                            lastname: user.lastname,
-                                                            dob: user.dob,
-                                                            email: user.email
 
-                                                        }
-                                                    })
-                                                }}>Update</button> */}
                                             <button onClick={() => {
                                                 deleteruser({ variables: { id: user.id } });
                                             }}>Delete</button>
@@ -358,20 +437,62 @@ const SyncValidationForm = props => {
     )
 }
 
- const mapStateToProps = (state) => {
-     return {
-         initialValues: {
-             firstName: state.data.firstName,
-             lastName: state.data.lastName,
-             dob: state.data.dob,
-             email: state.data.email
-         }
-    }
- }
-export default (reduxForm({
+
+SyncValidationForm = (reduxForm({
     form: 'syncValidation',
     validate,
-    enableReinitialize: true
+    enableReinitialize: true,
+
 
 }))(SyncValidationForm)
+
+const selector = formValueSelector('syncValidation')
+
+
+// SyncValidationForm = connect(
+
+//     state => {
+//         const firstname = selector(state, 'firstname')
+//         const lastname = selector(state, 'lastname')
+//         const dob = selector(state, 'dob')
+//         const email = selector(state, 'email')
+//         const id = selector(state, 'id')
+//         return {
+//             firstname,
+//             lastname,
+//             dob,
+//             email,
+//             id
+//         }
+//     }
+
+// )(SyncValidationForm)
+
+const mapStateToProps = (state) => {
+    const firstname = selector(state, 'firstname')
+    const lastname = selector(state, 'lastname')
+    const dob = selector(state, 'dob')
+    const email = selector(state, 'email')
+    const id = selector(state, 'id')
+    return {
+        firstname,
+        lastname,
+        dob,
+        email,
+        id
+    };
+};
+
+const mapDispatchToProps = (dispatch) => {
+    return (
+        dispatch(reset('SyncValidationForm'))
+
+    )
+
+
+
+}
+
+
+export default connect(mapStateToProps, mapDispatchToProps)(SyncValidationForm)
 
