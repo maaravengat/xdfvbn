@@ -4,18 +4,20 @@ import { reset } from 'redux-form'
 import { useMutation, gql, useQuery } from '@apollo/client'
 import { connect } from 'react-redux'
 import { initialize } from 'redux-form'
-// import { fs } from 'file-system'
-import FileSaver, { saveAs } from 'file-saver'
+
 import Dropzone from 'react-dropzone'
+import axios from 'axios'
 
 const ADD_MUTATIONS = gql`
-mutation AddBook($firstname: String!,$lastname: String!,$dob:String!,$email: String!){
-    addbook(firstname: $firstname, lastname:$lastname,dob:$dob,email:$email){
+mutation AddBook($firstname: String!,$lastname: String!,$dob:String!,$email: String! ,$imagename: String!){
+    addbook(firstname: $firstname, lastname:$lastname,dob:$dob,email:$email,imagename:$imagename){
         id
         firstname
         lastname
         dob
         email
+        imagename
+
     }
 }`
 const DELETE_MUTATIONS = gql`
@@ -26,13 +28,14 @@ mutation DeleterUser($id: String!){
 }`
 
 const UPDATE_MUTATIONS = gql`
-mutation UpdateUser($id: String!,$firstname: String!,$lastname: String!,$dob:String!,$email: String!){
-    updateuser( id:$id, firstname: $firstname, lastname:$lastname,dob:$dob,email:$email){
+mutation UpdateUser($id: String!,$firstname: String!,$lastname: String!,$dob:String!,$email: String!,$imagename: Upload!){
+    updateuser( id:$id, firstname: $firstname, lastname:$lastname,dob:$dob,email:$email,imagename:$imagename){
      id
      firstname
      lastname
      dob
      email
+     imagename
     }
 }`
 const FORM_DATA = gql`
@@ -136,77 +139,68 @@ const renderCheckbox = ({ input, label, meta: { touched, error } }) => (
         </label>
     </div>
 );
-//  const renderDrop = () => (
-    
-//     <Dropzone  onDrop={acceptedFiles => console.log(acceptedFiles,'photo upload')}>
-    
-//   {({getRootProps, getInputProps, acceptedFiles }) => (
-    
-//     <div  style={{
-//         alignItems:"center",
-//         width: '100px',
-//               height: '100px',
-//               borderWidth: '2px',
-//               borderColor: 'red',
-//               borderStyle: 'dashed',
-//               borderRadius: '5px',
-//               padding: '20px'
-//     }} {...getRootProps()}>
+
+const RenderUpload = ({ input: { value, onChange } }) => {
+
+    const [preview, setPreview] = useState(value)
+    const onDrop = (acceptedfiles) => {
         
-//       <input {...getInputProps()} />
-//       <p>Upload a File</p>
-//       <label>
-//         {acceptedFiles.map(file => (
-//     <li key={file.path}>
-//       {file.path} 
-//     </li>
-//   ))
-//   }
-//       </label>
-//     </div>
-//   )
-//   }
+        const renamedAcceptedFiles = acceptedfiles.map((file) => (
+            new File([file], `${+new Date()}`, { type: file.type })
+          ))
+         
+    console.log(renamedAcceptedFiles ,'fvdwswdfe');
+        // selectedFile = {
+        //     function (file) {
+        //         let newName = new Date().getTime() + '_' + file.name;
+        //         return newName;
+        //     }
+        
+        // } 
+        
+        const fromData = new FormData();
+        fromData.append('file', renamedAcceptedFiles[0])
 
-// </Dropzone>
-//  )
-
- const RenderUpload = ({input:{value, onChange}})=> {
-    
-     const [preview,setPreview]=useState(value)
-    const onDrop = (acceptedfiles)=> {
-        const selectedFile =acceptedfiles[0];
-        console.log(selectedFile,'gfdsasdfdsagfwqegygtrfw');
+        axios.post('http://localhost:4000/uploads', fromData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        }).then((response) => {
+            console.log(response, '=============');
+        })
+        const selectedFile = renamedAcceptedFiles[0];
         onChange(selectedFile)
         const reader = new FileReader();
-        console.log(reader,'fdsdfdsa');
-        const directorypath= '/path/home/radicalstart/vetri/src/images'
-        reader.onload =() => {
-            const result =reader.result
+
+        reader.onload = () => {
+
             setPreview(reader.result);
             console.log(reader.result);
-        
-        // saveAs(new Blob([result],{type:selectedFile}),`${directorypath}/${selectedFile}`)
         }
         reader.readAsDataURL(selectedFile)
-    
- }
- return (
-    <Dropzone
-    onDrop={onDrop}
-    >
-        {({getRootProps, getInputProps}) => (
-    <div class="dropzone mt-4 border-dashed" style={{
+
         
-    }}
-    {...getRootProps()}>
-      <input {...getInputProps()} />
-      {preview ? (<img src={preview} />
-      ):( <p>Upload a Photo here</p>)}
-     
-    </div>
-  )}
-    </Dropzone>
- )
+
+    }
+    return (
+        <Dropzone
+            onDrop={onDrop}
+            
+            
+        >
+            {({ getRootProps, getInputProps }) => (
+                <div class="dropzone mt-4 border-dashed" style={{
+
+                }}
+                    {...getRootProps()}>
+                    <input {...getInputProps()} />
+                    {preview ? (<img src={preview} />
+                    ) : (<p>Upload a Photo here</p>)}
+
+                </div>
+            )}
+        </Dropzone>
+    )
 }
 const renderField = ({
     input,
@@ -228,9 +222,7 @@ const renderField = ({
 
 
 let SyncValidationForm = props => {
-    const { handleSubmit, reset, resetForm, initialValues, dispatch } = props
-
-
+    const { handleSubmit, reset, resetForm, initialValues, dispatch ,  } = props
 
     // const { book } = useQuery(FORM_DATA)
     const [addbook] = useMutation(ADD_MUTATIONS, {
@@ -260,29 +252,15 @@ let SyncValidationForm = props => {
 
     const handleEdit = (id) => {
         props.initialize(id)
-
-
-
     }
-    const update = async values => {
-        await updateuser({
-            variables: {
-                id: props.id,
-                firstname: props.firstname,
-                lastname: props.lastname,
-                dob: props.dob,
-                email: props.email
 
-            }
-
-        })
-        reset('SyncValidationForm')
-    }
+   
+   
 
 
     const submit = async values => {
-
-        console.log(props.firstname, 'fdsdfds');
+        console.log(values.image.name,'dfghsdf');
+ 
 
         if (props.id) {
             await updateuser({
@@ -292,6 +270,7 @@ let SyncValidationForm = props => {
                     lastname: props.lastname,
                     dob: props.dob,
                     email: props.email
+                
 
                 }
 
@@ -306,7 +285,8 @@ let SyncValidationForm = props => {
                     firstname: values.firstname,
                     lastname: values.lastname,
                     dob: values.dob,
-                    email: values.email
+                    email: values.email,
+                    imagename:values.image.name
                 }
 
             })
@@ -324,8 +304,8 @@ let SyncValidationForm = props => {
                 <h3 class='text-primary'>Redux Form</h3>
                 <br />
 
-                   
-                 
+
+
                 <Field
                     name="firstname"
                     type="text"
@@ -340,8 +320,9 @@ let SyncValidationForm = props => {
                 < br />
                 <Field name="email" type="email" component={renderField} label="Email" />
                 <br />
-        
-                <Field name="files" component={RenderUpload}/>
+
+                <Field name="image" component={RenderUpload} />
+                
                 <br />
                 <br />
                 {/* 
@@ -401,6 +382,7 @@ let SyncValidationForm = props => {
                     <table class="table">
                         <thead>
                             <tr>
+                                <th>Image</th>
                                 <th> First Name</th>
                                 <th> Last Name</th>
                                 <th> D.O.B</th>
@@ -413,7 +395,9 @@ let SyncValidationForm = props => {
                             {data && data.book.map(user => {
                                 return (
                                     <tr>
+                                        <td>{<img src={user.image} />}</td>
                                         <td>{user.firstname}</td>
+
                                         <td>{user.lastname}</td>
                                         <td>{user.dob}</td>
                                         <td>{user.email}</td>
