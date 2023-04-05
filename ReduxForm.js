@@ -4,9 +4,10 @@ import { reset } from 'redux-form'
 import { useMutation, gql, useQuery } from '@apollo/client'
 import { connect } from 'react-redux'
 import { initialize } from 'redux-form'
-
+// import wsdfgh  from "../Backend/public/files"
 import Dropzone from 'react-dropzone'
 import axios from 'axios'
+import { url } from 'redux-form-validators'
 
 const ADD_MUTATIONS = gql`
 mutation AddBook($firstname: String!,$lastname: String!,$dob:String!,$email: String! ,$imagename: String!){
@@ -46,6 +47,7 @@ query languagequery{
       lastname
       dob
       email
+      imagename
     }
   }`
 
@@ -144,49 +146,58 @@ const RenderUpload = ({ input: { value, onChange } }) => {
 
     const [preview, setPreview] = useState(value)
     const onDrop = (acceptedfiles) => {
-        
-        const renamedAcceptedFiles = acceptedfiles.map((file) => (
-            new File([file], `${+new Date()}`, { type: file.type })
-          ))
-         
-    console.log(renamedAcceptedFiles ,'fvdwswdfe');
+
+        let imageName = null;
+
+        // const renamedAcceptedFiles = acceptedfiles.map((file) => (
+        // new File([file], `${+new Date()}${file.type}` )
+        //   ))
+
+        // console.log(renamedAcceptedFiles ,'fvdwswdfe');
         // selectedFile = {
         //     function (file) {
         //         let newName = new Date().getTime() + '_' + file.name;
         //         return newName;
         //     }
-        
+
         // } 
-        
+
         const fromData = new FormData();
-        fromData.append('file', renamedAcceptedFiles[0])
+        fromData.append('file', acceptedfiles[0])
 
         axios.post('http://localhost:4000/uploads', fromData, {
             headers: {
                 'Content-Type': 'multipart/form-data'
             }
         }).then((response) => {
-            console.log(response, '=============');
+
+            if (response.status == 200) {
+                imageName = response.data.file.filename
+            }
+
+            const selectedFile = acceptedfiles[0];
+            onChange(selectedFile)
+            const reader = new FileReader();
+
+            reader.onload = () => {
+
+                setPreview(reader.result);
+                console.log(reader.result);
+            }
+            reader.readAsDataURL(selectedFile)
+
+            console.log('=========imageName====', imageName);
+
+
         })
-        const selectedFile = renamedAcceptedFiles[0];
-        onChange(selectedFile)
-        const reader = new FileReader();
 
-        reader.onload = () => {
-
-            setPreview(reader.result);
-            console.log(reader.result);
-        }
-        reader.readAsDataURL(selectedFile)
-
-        
 
     }
     return (
         <Dropzone
             onDrop={onDrop}
-            
-            
+
+
         >
             {({ getRootProps, getInputProps }) => (
                 <div class="dropzone mt-4 border-dashed" style={{
@@ -222,7 +233,7 @@ const renderField = ({
 
 
 let SyncValidationForm = props => {
-    const { handleSubmit, reset, resetForm, initialValues, dispatch ,  } = props
+    const { handleSubmit, reset, resetForm, initialValues, dispatch, } = props
 
     // const { book } = useQuery(FORM_DATA)
     const [addbook] = useMutation(ADD_MUTATIONS, {
@@ -254,13 +265,13 @@ let SyncValidationForm = props => {
         props.initialize(id)
     }
 
-   
-   
+
+
 
 
     const submit = async values => {
-        console.log(values.image.name,'dfghsdf');
- 
+        console.log(values.image, 'gfdsdfgfd');
+
 
         if (props.id) {
             await updateuser({
@@ -270,7 +281,7 @@ let SyncValidationForm = props => {
                     lastname: props.lastname,
                     dob: props.dob,
                     email: props.email
-                
+
 
                 }
 
@@ -286,7 +297,7 @@ let SyncValidationForm = props => {
                     lastname: values.lastname,
                     dob: values.dob,
                     email: values.email,
-                    imagename:values.image.name
+                     imagename: values.image.name
                 }
 
             })
@@ -322,7 +333,7 @@ let SyncValidationForm = props => {
                 <br />
 
                 <Field name="image" component={RenderUpload} />
-                
+
                 <br />
                 <br />
                 {/* 
@@ -382,25 +393,51 @@ let SyncValidationForm = props => {
                     <table class="table">
                         <thead>
                             <tr>
-                                <th>Image</th>
+                                {/* <th>Image</th> */}
                                 <th> First Name</th>
                                 <th> Last Name</th>
                                 <th> D.O.B</th>
                                 <th> Email</th>
+                                <th>Image</th>
                                 <th> Action</th>
 
                             </tr>
                         </thead>
                         <tbody>
                             {data && data.book.map(user => {
+                                console.log(user.imagename, 'fdsasdfds');
+
                                 return (
                                     <tr>
-                                        <td>{<img src={user.image} />}</td>
+                                        {/* <td>{<img src={} />}</td> */}
                                         <td>{user.firstname}</td>
 
                                         <td>{user.lastname}</td>
                                         <td>{user.dob}</td>
                                         <td>{user.email}</td>
+                                        {/* <td>{user.imagename}</td> */}
+                                        {/* <td><div>{<img src={`${process.env.PUBLIC_URL}(${user.imagename})`} />}</div></td> */}
+                                        {/* <td>
+    <div style={{backgroundImage: ur}}>
+
+    </div>
+</td> */}
+
+
+
+
+                                        {/* <td><div>{<img src ={'../'} />}</div></td> */}
+                                        {/* <td><div>{<img src={require(`../Backend/public/files/`)}  alt ="house"/>}</div></td> */}
+
+                                        <div style={{ backgroundSize: "cover", backgroundImage: "url(../Backend/public/files/1680676255449.jpeg)" }}>
+
+                                        </div>
+
+
+                                        {/* <td>{<img src={require(`../Backend/public/files/${user.imagename}`)} />}</td> */}
+                                        {/* <td><div style={{backgroundImage: url(``)}}>
+
+                                            </div></td> */}
                                         <td>
                                             <button onClick={() => handleEdit(user)}>Edit</button>
 
