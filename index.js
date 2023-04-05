@@ -4,7 +4,7 @@ const app = express();
 const bodyParser = require('body-parser')
 const multer = require("multer");
 const schema = require('./Schema/schema')
-// const schema = require('')
+
 const path = require("path")
 const { graphqlHTTP } = require("express-graphql");
 app.use(cors())
@@ -39,7 +39,7 @@ app.post('/uploads', upload.single('file'), async (req, res) => {
   try {
     if (req.file) {
       console.log('fdsdfgdstfds');
-      return res.send({ status: 400, message: 'Please upload an image succesfully' });
+      return res.send({ status: 200, message: 'Please upload an image succesfully', file: req.file });
     }
   }
   catch (error) {
