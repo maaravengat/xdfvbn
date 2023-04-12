@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react'
 import { Field, reduxForm, formValueSelector, change, resetSection } from 'redux-form'
 import { reset } from 'redux-form'
@@ -18,7 +19,6 @@ mutation AddBook($firstname: String!,$lastname: String!,$dob:String!,$email: Str
         dob
         email
         imagename
-
     }
 }`
 const DELETE_MUTATIONS = gql`
@@ -29,7 +29,7 @@ mutation DeleterUser($id: String!){
 }`
 
 const UPDATE_MUTATIONS = gql`
-mutation UpdateUser($id: String!,$firstname: String!,$lastname: String!,$dob:String!,$email: String!,$imagename: Upload!){
+mutation UpdateUser($id: String!,$firstname: String!,$lastname: String!,$dob:String!,$email: String!,$imagename: String!){
     updateuser( id:$id, firstname: $firstname, lastname:$lastname,dob:$dob,email:$email,imagename:$imagename){
      id
      firstname
@@ -142,77 +142,7 @@ const renderCheckbox = ({ input, label, meta: { touched, error } }) => (
     </div>
 );
 
-const RenderUpload = ({ input: { value, onChange } }) => {
 
-    const [preview, setPreview] = useState(value)
-    const onDrop = (acceptedfiles) => {
-
-        let imageName = null;
-
-        // const renamedAcceptedFiles = acceptedfiles.map((file) => (
-        // new File([file], `${+new Date()}${file.type}` )
-        //   ))
-
-        // console.log(renamedAcceptedFiles ,'fvdwswdfe');
-        // selectedFile = {
-        //     function (file) {
-        //         let newName = new Date().getTime() + '_' + file.name;
-        //         return newName;
-        //     }
-
-        // } 
-
-        const fromData = new FormData();
-        fromData.append('file', acceptedfiles[0])
-
-        axios.post('http://localhost:4000/uploads', fromData, {
-            headers: {
-                'Content-Type': 'multipart/form-data'
-            }
-        }).then((response) => {
-
-            if (response.status == 200) {
-                imageName = response.data.file.filename
-            }
-
-            const selectedFile = acceptedfiles[0];
-            onChange(selectedFile)
-            const reader = new FileReader();
-
-            reader.onload = () => {
-
-                setPreview(reader.result);
-                console.log(reader.result);
-            }
-            reader.readAsDataURL(selectedFile)
-
-            console.log('=========imageName====', imageName);
-
-
-        })
-
-
-    }
-    return (
-        <Dropzone
-            onDrop={onDrop}
-
-
-        >
-            {({ getRootProps, getInputProps }) => (
-                <div class="dropzone mt-4 border-dashed" style={{
-
-                }}
-                    {...getRootProps()}>
-                    <input {...getInputProps()} />
-                    {preview ? (<img src={preview} />
-                    ) : (<p>Upload a Photo here</p>)}
-
-                </div>
-            )}
-        </Dropzone>
-    )
-}
 const renderField = ({
     input,
     label,
@@ -233,6 +163,74 @@ const renderField = ({
 
 
 let SyncValidationForm = props => {
+    const [imageName, setImageName] = useState(null)
+    const [preview, setPreview] = useState(0)
+    const RenderUpload = ({ label, input: { value, onChange } }) => {
+
+
+
+
+        const onDrop = (acceptedfiles) => {
+
+            // let imageName= null
+
+            const fromData = new FormData();
+            fromData.append('file', acceptedfiles[0])
+
+            axios.post('http://localhost:4000/uploads', fromData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            }).then((response) => {
+                setImageName(response.data.file.filename)
+
+                if (response.status == 200) {
+                    console.log(response.data.file.filename, 'fdsdf');
+                    setImageName(response.data.file.filename)
+                    console.log(imageName, 'gfdfggfgg');
+
+                    //   imageName = response.data.file.filename
+                }
+
+                const selectedFile = acceptedfiles[0];
+                onChange(selectedFile)
+                const reader = new FileReader();
+
+                reader.onload = () => {
+
+                    setPreview(reader.result);
+                    console.log(reader.result);
+                }
+                reader.readAsDataURL(selectedFile)
+
+                // setImageName(imageName)
+                console.log('=========imageName====', imageName);
+
+
+            })
+
+
+        }
+        return (
+            <p>
+                <Dropzone
+                    onDrop={onDrop}  >
+                    {({ getRootProps, getInputProps }) => (
+                        <div class="dropzone mt-4 border-dashed" style={{
+
+                        }}
+                            {...getRootProps()}>
+                            <input {...getInputProps()} />
+                            {preview.length > 0 ? (<img src={preview} />
+                            ) : (<p>Upload a Photo here</p>)}
+
+                        </div>
+                    )}
+                </Dropzone>
+            </p>
+
+        )
+    }
     const { handleSubmit, reset, resetForm, initialValues, dispatch, } = props
 
     // const { book } = useQuery(FORM_DATA)
@@ -262,16 +260,11 @@ let SyncValidationForm = props => {
 
 
     const handleEdit = (id) => {
+        console.log(id, 'howzat');
         props.initialize(id)
     }
 
-
-
-
-
     const submit = async values => {
-        console.log(values.image, 'gfdsdfgfd');
-
 
         if (props.id) {
             await updateuser({
@@ -280,14 +273,11 @@ let SyncValidationForm = props => {
                     firstname: props.firstname,
                     lastname: props.lastname,
                     dob: props.dob,
-                    email: props.email
-
+                    email: props.email,
+                    imagename: imageName
 
                 }
-
             })
-
-
         }
         else {
             await addbook({
@@ -297,13 +287,14 @@ let SyncValidationForm = props => {
                     lastname: values.lastname,
                     dob: values.dob,
                     email: values.email,
-                     imagename: values.image.name
+                    imagename: imageName
                 }
 
             })
         }
         //  reset()
         dispatch(reset('SyncValidationForm'))
+        setPreview(false)
     }
     useEffect(() => {
         console.log("userdata");
@@ -332,7 +323,7 @@ let SyncValidationForm = props => {
                 <Field name="email" type="email" component={renderField} label="Email" />
                 <br />
 
-                <Field name="image" component={RenderUpload} />
+                <Field name="image" type=' file' component={RenderUpload} />
 
                 <br />
                 <br />
@@ -354,20 +345,16 @@ let SyncValidationForm = props => {
                     </Field>
                     < br />
                 </div>
-
                
             </div>
             < br />
-
             <div class="form-group row">
                 <label class="text-primary col-sm-10">Hobbies :</label>
                 <label class="col-sm-12">
                     <Field
-
                         name="hobbies"
                         component={renderCheckbox}
                         label="Color"
-
                     />
                 </label>
             </div>
@@ -405,8 +392,8 @@ let SyncValidationForm = props => {
                         </thead>
                         <tbody>
                             {data && data.book.map(user => {
-                                console.log(user.imagename, 'fdsasdfds');
 
+                                console.log(user, '=========>');
                                 return (
                                     <tr>
                                         {/* <td>{<img src={} />}</td> */}
@@ -415,11 +402,10 @@ let SyncValidationForm = props => {
                                         <td>{user.lastname}</td>
                                         <td>{user.dob}</td>
                                         <td>{user.email}</td>
-                                        {/* <td>{user.imagename}</td> */}
+                                        <td>{user.imagename}</td>
                                         {/* <td><div>{<img src={`${process.env.PUBLIC_URL}(${user.imagename})`} />}</div></td> */}
                                         {/* <td>
     <div style={{backgroundImage: ur}}>
-
     </div>
 </td> */}
 
@@ -427,17 +413,13 @@ let SyncValidationForm = props => {
 
 
                                         {/* <td><div>{<img src ={'../'} />}</div></td> */}
-                                        {/* <td><div>{<img src={require(`../Backend/public/files/`)}  alt ="house"/>}</div></td> */}
+                                        {/* <td><div>{<img src={`${process.env.PUBLIC_URL}(${user.imagename})`} height ='50px'/>}</div></td> */}
 
-                                        <div style={{ backgroundSize: "cover", backgroundImage: "url(../Backend/public/files/1680676255449.jpeg)" }}>
+                                        {/* <div style={{ backgroundSize: "cover", backgroundImage: "url(../Backend/public/files/1680676255449.jpeg)" }}>
 
-                                        </div>
+                                        </div> */}
 
 
-                                        {/* <td>{<img src={require(`../Backend/public/files/${user.imagename}`)} />}</td> */}
-                                        {/* <td><div style={{backgroundImage: url(``)}}>
-
-                                            </div></td> */}
                                         <td>
                                             <button onClick={() => handleEdit(user)}>Edit</button>
 
@@ -495,12 +477,15 @@ const mapStateToProps = (state) => {
     const dob = selector(state, 'dob')
     const email = selector(state, 'email')
     const id = selector(state, 'id')
+    const imagename = selector(state, 'imagename')
+
     return {
         firstname,
         lastname,
         dob,
         email,
-        id
+        id,
+        imagename
     };
 };
 
@@ -516,4 +501,3 @@ const mapDispatchToProps = (dispatch) => {
 
 
 export default connect(mapStateToProps, mapDispatchToProps)(SyncValidationForm)
-
